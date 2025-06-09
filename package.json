@@ -8,11 +8,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A Discord bot designed to manage user verification through email OTP for the AlgoPath community.",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
+    "cors": "^2.8.5",
     "discord.js": "^14.19.3",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "nodemailer": "^7.0.3",
     "pg": "^8.16.0"
-  }
+  },
+  "devDependencies": {}
 }

@@ -7,8 +7,8 @@ module.exports = {
     clientId: process.env.DISCORD_CLIENT_ID,
   },
   email: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    sendgridApiKey: process.env.SENDGRID_API_KEY,
+    from: process.env.EMAIL_FROM,
   },
   db: {
     host: process.env.PGHOST,
