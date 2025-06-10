@@ -66,10 +66,14 @@
                         Request Verification
                     </button>
                 </form>
+
+                <!-- Success Message Container -->
+                <div id="successMessage" class="hidden p-4 rounded-md"></div>
             </div>
         </div>
     </div>
 
+    <script src="script.js"></script>
     <script>
         const form = document.getElementById('verificationForm');
         const step1 = document.getElementById('step1');
@@ -111,24 +115,7 @@
                     }
                 } else {
                     // Verify OTP
-                    const response = await fetch('/api/verify-otp', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ email, discordId, otp }),
-                    });
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        showMessage('Verification successful! You can now return to Discord.', 'success');
-                        form.reset();
-                        otpSection.classList.add('hidden');
-                        submitBtn.textContent = 'Request Verification';
-                        isOtpStage = false;
-                    } else {
-                        showMessage(data.message, 'error');
-                    }
+                    verifyOTP();
                 }
             } catch (error) {
                 showMessage('An error occurred. Please try again.', 'error');
