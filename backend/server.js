@@ -7,7 +7,7 @@ const path = require('path');
 const { pool } = require('./db');
 const { generateOTP, validateOTP } = require('./otp');
 const { sendMail } = require('./mailer');
-const { assignRole } = require('./discord');
+const { assignRole, checkUserExists } = require('./discord');
 const { handleVerification, verifyOTP } = require('./verification');
 
 const app = express();
@@ -17,8 +17,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Store Discord ID mapping
+// Store Discord ID mapping and email-Discord pairs
 const discordIdMap = new Map();
+const emailDiscordPairs = new Map();
 
 // Log environment variables status (without exposing sensitive data)
 console.log('Environment Check:');
@@ -69,8 +70,24 @@ app.post('/api/verify', async (req, res) => {
         });
     }
 
-    // Store Discord username mapping
+    // Check if this email is already paired with a different Discord ID
+    const existingDiscordId = emailDiscordPairs.get(email);
+    if (existingDiscordId && existingDiscordId !== discordId) {
+        return res.json({
+            success: false,
+            message: 'This email is already associated with a different Discord account. Please use the same Discord account you used before.'
+        });
+    }
+
+    // First check if the user exists in Discord server
+    const discordCheck = await checkUserExists(discordId);
+    if (!discordCheck.success) {
+        return res.json(discordCheck);
+    }
+
+    // Store Discord username mapping and email-Discord pair
     discordIdMap.set(email, discordId);
+    emailDiscordPairs.set(email, discordId);
 
     const result = await handleVerification(email);
     res.json(result);
@@ -100,6 +117,7 @@ app.post('/api/verify-otp', async (req, res) => {
     if (result.success) {
         // Clear the Discord username mapping after successful verification
         discordIdMap.delete(email);
+        // Keep the email-Discord pair for future reference
     }
     
     res.json(result);

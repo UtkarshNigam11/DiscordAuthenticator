@@ -50,6 +50,45 @@ async function waitForReady() {
   });
 }
 
+// New function to check if user exists in server
+async function checkUserExists(username) {
+  try {
+    await waitForReady();
+    
+    if (!process.env.DISCORD_GUILD_ID) {
+      console.error('DISCORD_GUILD_ID is missing');
+      return { success: false, message: 'Server configuration error' };
+    }
+
+    const guild = await client.guilds.fetch(process.env.DISCORD_GUILD_ID);
+    await guild.members.fetch();
+    
+    const member = guild.members.cache.find(m => 
+      m.user.username.toLowerCase() === username.toLowerCase() ||
+      m.user.tag.toLowerCase() === username.toLowerCase()
+    );
+
+    if (!member) {
+      return { 
+        success: false, 
+        message: 'Could not find you in the server. Please make sure you have joined the AlgoPath Discord server first.' 
+      };
+    }
+
+    return { 
+      success: true, 
+      message: 'User found in server',
+      userId: member.id
+    };
+  } catch (err) {
+    console.error('Error checking user:', err);
+    return { 
+      success: false, 
+      message: 'Error checking Discord server. Please try again.' 
+    };
+  }
+}
+
 async function assignRole(username) {
   try {
     // Wait for bot to be ready
@@ -106,4 +145,4 @@ async function assignRole(username) {
   }
 }
 
-module.exports = { assignRole };
+module.exports = { assignRole, checkUserExists };

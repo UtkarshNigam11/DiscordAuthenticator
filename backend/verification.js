@@ -39,8 +39,22 @@ async function checkPremiumStatus(email) {
     }
 }
 
+// Check if Discord username is already associated with another email
+async function checkDiscordUsernameExists(discordUsername) {
+    try {
+        const result = await pool.query(
+            'SELECT email FROM users WHERE discord_username = $1',
+            [discordUsername]
+        );
+        return result.rows.length > 0;
+    } catch (error) {
+        console.error('Error checking Discord username:', error);
+        return false;
+    }
+}
+
 // Handle verification request
-async function handleVerification(email) {
+async function handleVerification(email, discordUsername) {
     try {
         const exists = await checkEmailExists(email);
         if (!exists) {
@@ -58,11 +72,21 @@ async function handleVerification(email) {
             };
         }
 
+        // Check if this Discord username is already associated with another email
+        const discordExists = await checkDiscordUsernameExists(discordUsername);
+        if (discordExists) {
+            return {
+                success: false,
+                message: "This Discord account is already associated with another email address."
+            };
+        }
+
         // Generate and store OTP
         const otp = generateOTP();
         otpStore.set(email, {
             otp,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            discordUsername
         });
 
         // Send OTP via email
@@ -82,7 +106,7 @@ async function handleVerification(email) {
 }
 
 // Verify OTP
-async function verifyOTP(email, otp, discordId) {
+async function verifyOTP(email, otp, discordUsername) {
     const storedData = otpStore.get(email);
     if (!storedData) {
         return {
@@ -107,24 +131,44 @@ async function verifyOTP(email, otp, discordId) {
         };
     }
 
+    // Verify Discord username matches
+    if (storedData.discordUsername !== discordUsername) {
+        return {
+            success: false,
+            message: "Discord username does not match the one used for verification."
+        };
+    }
+
     // Clear OTP after successful verification
     otpStore.delete(email);
 
-    // Assign role to the user
-    if (discordId) {
-        const roleResult = await assignRole(discordId);
+    try {
+        // Store the Discord username in the database
+        await pool.query(
+            'UPDATE users SET discord_username = $1 WHERE email = $2',
+            [discordUsername, email]
+        );
+
+        // Assign role to the user
+        const roleResult = await assignRole(discordUsername);
         if (!roleResult.success) {
             return {
                 success: false,
                 message: roleResult.message
             };
         }
-    }
 
-    return {
-        success: true,
-        message: "Email verified successfully and role assigned!"
-    };
+        return {
+            success: true,
+            message: "Email verified successfully and role assigned!"
+        };
+    } catch (error) {
+        console.error('Error in verification:', error);
+        return {
+            success: false,
+            message: "An error occurred during verification. Please try again later."
+        };
+    }
 }
 
 module.exports = {
