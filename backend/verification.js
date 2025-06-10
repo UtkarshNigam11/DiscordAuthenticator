@@ -1,5 +1,6 @@
 const { pool } = require('./db');
 const { sendMail } = require('./mailer');
+const { assignRole } = require('./discord');
 const crypto = require('crypto');
 
 // Store OTPs temporarily (in production, use Redis or similar)
@@ -81,7 +82,7 @@ async function handleVerification(email) {
 }
 
 // Verify OTP
-function verifyOTP(email, otp) {
+async function verifyOTP(email, otp, discordId) {
     const storedData = otpStore.get(email);
     if (!storedData) {
         return {
@@ -108,9 +109,21 @@ function verifyOTP(email, otp) {
 
     // Clear OTP after successful verification
     otpStore.delete(email);
+
+    // Assign role to the user
+    if (discordId) {
+        const roleResult = await assignRole(discordId);
+        if (!roleResult.success) {
+            return {
+                success: false,
+                message: roleResult.message
+            };
+        }
+    }
+
     return {
         success: true,
-        message: "Email verified successfully!"
+        message: "Email verified successfully and role assigned!"
     };
 }
 

@@ -69,7 +69,7 @@ app.post('/api/verify', async (req, res) => {
         });
     }
 
-    // Store Discord ID mapping
+    // Store Discord username mapping
     discordIdMap.set(email, discordId);
 
     const result = await handleVerification(email);
@@ -87,7 +87,7 @@ app.post('/api/verify-otp', async (req, res) => {
         });
     }
 
-    // Verify the Discord ID matches
+    // Verify the Discord username matches
     const storedDiscordId = discordIdMap.get(email);
     if (storedDiscordId !== discordId) {
         return res.json({
@@ -96,9 +96,9 @@ app.post('/api/verify-otp', async (req, res) => {
         });
     }
 
-    const result = verifyOTP(email, otp);
+    const result = await verifyOTP(email, otp, discordId);
     if (result.success) {
-        // Clear the Discord ID mapping after successful verification
+        // Clear the Discord username mapping after successful verification
         discordIdMap.delete(email);
     }
     
