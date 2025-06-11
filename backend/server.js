@@ -112,9 +112,13 @@ app.get('/verify', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/verify.html'));
 });
 
-// Catch-all route to serve landing page for any other routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/landing.html'));
+// Serve static files for all other routes
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+        next();
+    } else {
+        res.sendFile(path.join(__dirname, '../frontend/landing.html'));
+    }
 });
 
 app.listen(PORT, () => {
