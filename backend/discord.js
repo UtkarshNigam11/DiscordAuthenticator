@@ -121,6 +121,21 @@ async function assignRole(username) {
       console.log(`- ${role.name} (ID: ${role.id})`);
     });
 
+    // Create Verified role (or find existing one)
+    let verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase() === 'verified');
+
+    if (!verifiedRole) {
+      verifiedRole = await guild.roles.create({
+        name: 'Verified',
+        color: '#00ff00',
+        reason: 'Role for verified members',
+        position: 1 // Position it below the @everyone role
+      });
+      console.log('Created new Verified role.');
+    } else {
+      console.log('Found existing Verified role.');
+    }
+
     // Try to find the role (case-insensitive)
     const role = guild.roles.cache.find(r => 
       r.name.toLowerCase() === 'verified' || 
@@ -165,9 +180,9 @@ client.on('guildMemberAdd', async (member) => {
       allowedMentions: { users: [member.id] }
     };
     
-    // Find the welcome channel
+    // Find the welcome channel - updated to correctly identify '📌welcome'
     const welcomeChannel = member.guild.channels.cache.find(ch => 
-      ch.name.toLowerCase() === 'welcome' && 
+      ch.name === '📌welcome' && 
       ch.type === 0 // 0 is GUILD_TEXT
     );
     
@@ -213,13 +228,20 @@ async function createServerStructure(guild) {
         // First, clean up existing channels
         await cleanupChannels(guild);
 
-        // Create Verified role
-        const verifiedRole = await guild.roles.create({
-            name: '✅ Verified',
-            color: '#00ff00',
-            reason: 'Role for verified members',
-            position: 1 // Position it below the @everyone role
-        });
+        // Create Verified role (or find existing one)
+        let verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase() === 'verified');
+
+        if (!verifiedRole) {
+            verifiedRole = await guild.roles.create({
+                name: 'Verified',
+                color: '#00ff00',
+                reason: 'Role for verified members',
+                position: 1 // Position it below the @everyone role
+            });
+            console.log('Created new Verified role.');
+        } else {
+            console.log('Found existing Verified role.');
+        }
 
         // Create categories
         const infoCategory = await guild.channels.create({
@@ -342,19 +364,6 @@ async function createServerStructure(guild) {
                     id: guild.id,
                     deny: ['SendMessages'],
                     allow: ['ViewChannel', 'ReadMessageHistory']
-                }
-            ]
-        });
-
-        await guild.channels.create({
-            name: '✅verification',
-            type: 0,
-            parent: infoCategory.id,
-            topic: 'Verify your account to access all channels.',
-            permissionOverwrites: [
-                {
-                    id: guild.id,
-                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
                 }
             ]
         });
@@ -635,27 +644,36 @@ async function createServerStructure(guild) {
 
         // Send welcome message to the welcome channel
         const welcomeChannel = guild.channels.cache.find(ch => ch.name === '📌welcome');
+        const rulesChannel = guild.channels.cache.find(ch => ch.name === '📜rules');
+        const introductionsChannel = guild.channels.cache.find(ch => ch.name === '🌍introductions');
+        const generalChatChannel = guild.channels.cache.find(ch => ch.name === '💬general-chat');
+        const dsaDoubtsChannel = guild.channels.cache.find(ch => ch.name === '📊dsa-doubts');
+        const webDevChannel = guild.channels.cache.find(ch => ch.name === '🧑‍💻web-dev');
+        const aiMlChannel = guild.channels.cache.find(ch => ch.name === '🤖ai-ml');
+        const focusRoomChannel = guild.channels.cache.find(ch => ch.name === '🎙️ Focus Room');
+        const studyLogsChannel = guild.channels.cache.find(ch => ch.name === '📚study-logs');
+        const collabOpportunitiesChannel = guild.channels.cache.find(ch => ch.name === '🙌collab-opportunities');
+
+        // Create verification URL placeholder
+        const baseUrl = process.env.FRONTEND_URL || 'https://web-production-621c.up.railway.app';
+        const verificationUrl = `${baseUrl}/verify?username={username}`;
+
         if (welcomeChannel) {
             await welcomeChannel.send({
-                content: `# Welcome to AlgoPath! 🎉
+                content: `# Welcome to AlgoPath! 🎉\n\n## Getting Started\n1. Read the <#${rulesChannel ? rulesChannel.id : 'rules'}> to understand our community guidelines\n2. To access all channels, please verify your account by clicking the link sent to you by the bot in a direct message!\n3. After verification, you'll get access to all channels and can introduce yourself in <#${introductionsChannel ? introductionsChannel.id : 'introductions'}>\n\n## Key Channels (Available after verification)\n- <#${generalChatChannel ? generalChatChannel.id : 'general-chat'}> - General discussion\n- <#${dsaDoubtsChannel ? dsaDoubtsChannel.id : 'dsa-doubts'}> - DSA help\n- <#${webDevChannel ? webDevChannel.id : 'web-dev'}> - Web development\n- <#${aiMlChannel ? aiMlChannel.id : 'ai-ml'}> - AI/ML discussions\n\n## Study Together (Available after verification)\n- Join <#${focusRoomChannel ? focusRoomChannel.id : 'focus-room'}> for focused study sessions\n- Share your progress in <#${studyLogsChannel ? studyLogsChannel.id : 'study-logs'}>\n- Find study partners in <#${collabOpportunitiesChannel ? collabOpportunitiesChannel.id : 'collab-opportunities'}>\n\nWe're excited to have you here! 🚀`
+            });
+        }
 
-## Getting Started
-1. Read the <#${guild.channels.cache.find(ch => ch.name === '📜rules').id}> to understand our community guidelines
-2. Head to <#${guild.channels.cache.find(ch => ch.name === '✅verification').id}> to verify your account
-3. After verification, you'll get access to all channels and can introduce yourself in <#${guild.channels.cache.find(ch => ch.name === '🌍introductions').id}>
+        // Send initial messages to specific channels
+        if (rulesChannel) {
+            await rulesChannel.send({
+                content: `# AlgoPath Server Rules 📜\n\nWelcome to AlgoPath! To ensure a positive and productive environment for everyone, please adhere to the following rules:\n\n1.  **Be Respectful:** Treat all members with respect. Harassment, hate speech, or discrimination will not be tolerated.\n2.  **No Spamming:** Do not flood channels with excessive messages, images, or links.\n3.  **Stay On-Topic:** Keep discussions relevant to the channel's purpose.\n4.  **No Advertising:** Self-promotion or unsolicited advertising is not allowed.\n5.  **Sensitive Content:** Do not share any NSFW, gore, or otherwise inappropriate content.\n6.  **Privacy:** Do not share personal information about yourself or others.\n7.  **Follow Discord ToS:** Abide by Discord's Terms of Service and Community Guidelines.\n\nBreaking these rules may result in warnings, kicks, or bans. Thank you for making AlgoPath a great community!\n`
+            });
+        }
 
-## Key Channels (Available after verification)
-- <#${guild.channels.cache.find(ch => ch.name === '💬general-chat').id}> - General discussion
-- <#${guild.channels.cache.find(ch => ch.name === '📊dsa-doubts').id}> - DSA help
-- <#${guild.channels.cache.find(ch => ch.name === '🧑‍💻web-dev').id}> - Web development
-- <#${guild.channels.cache.find(ch => ch.name === '🤖ai-ml').id}> - AI/ML discussions
-
-## Study Together (Available after verification)
-- Join <#${guild.channels.cache.find(ch => ch.name === '🎙️ Focus Room').id}> for focused study sessions
-- Share your progress in <#${guild.channels.cache.find(ch => ch.name === '📚study-logs').id}>
-- Find study partners in <#${guild.channels.cache.find(ch => ch.name === '🙌collab-opportunities').id}>
-
-We're excited to have you here! 🚀`
+        if (studyLogsChannel) {
+            await studyLogsChannel.send({
+                content: `# How to Effectively Study on AlgoPath 🎓\n\nWelcome to your study journey! Here are some tips to make the most out of AlgoPath:\n\n1.  **Set Clear Goals:** Define what you want to achieve each study session or week.\n2.  **Utilize Resources:** Explore the channels for specific topics (DSA, Web Dev, AI/ML) and leverage shared resources.\n3.  **Engage Actively:** Ask questions, answer others, and participate in discussions. Teaching others is a great way to learn.\n4.  **Use Study Rooms:** Join voice channels like <#${focusRoomChannel ? focusRoomChannel.id : 'Focus Room'}> for focused study sessions with others.\n5.  **Share Progress:** Post your study logs in <#${studyLogsChannel ? studyLogsChannel.id : 'study-logs'}> to track your journey and stay motivated.\n6.  **Collaborate:** Look for study partners or project collaborators in <#${collabOpportunitiesChannel ? collabOpportunitiesChannel.id : 'collab-opportunities'}>.\n7.  **Take Breaks:** Remember to rest and avoid burnout. Short breaks improve focus.\n\nHappy learning! If you have any questions, feel free to ask in the relevant help channels.`
             });
         }
 
