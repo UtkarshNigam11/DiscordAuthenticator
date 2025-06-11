@@ -54,7 +54,7 @@ async function checkDiscordUsernameExists(discordUsername) {
 }
 
 // Handle verification request
-async function handleVerification(email, discordUsername) {
+async function handleVerification(email) {
     try {
         const exists = await checkEmailExists(email);
         if (!exists) {
@@ -72,21 +72,11 @@ async function handleVerification(email, discordUsername) {
             };
         }
 
-        // Check if this Discord username is already associated with another email
-        const discordExists = await checkDiscordUsernameExists(discordUsername);
-        if (discordExists) {
-            return {
-                success: false,
-                message: "This Discord account is already associated with another email address."
-            };
-        }
-
         // Generate and store OTP
         const otp = generateOTP();
         otpStore.set(email, {
             otp,
-            timestamp: Date.now(),
-            discordUsername
+            timestamp: Date.now()
         });
 
         // Send OTP via email
@@ -107,57 +97,70 @@ async function handleVerification(email, discordUsername) {
 
 // Verify OTP
 async function verifyOTP(email, otp, discordUsername) {
-    const storedData = otpStore.get(email);
-    if (!storedData) {
-        return {
-            success: false,
-            message: "No OTP found for this email. Please request a new OTP."
-        };
-    }
-
-    // Check if OTP is expired (10 minutes)
-    if (Date.now() - storedData.timestamp > 10 * 60 * 1000) {
-        otpStore.delete(email);
-        return {
-            success: false,
-            message: "OTP has expired. Please request a new one."
-        };
-    }
-
-    if (storedData.otp !== otp) {
-        return {
-            success: false,
-            message: "Invalid OTP. Please try again."
-        };
-    }
-
-    // Verify Discord username matches
-    if (storedData.discordUsername !== discordUsername) {
-        return {
-            success: false,
-            message: "Discord username does not match the one used for verification."
-        };
-    }
-
-    // Clear OTP after successful verification
-    otpStore.delete(email);
-
     try {
+        const storedData = otpStore.get(email);
+        if (!storedData) {
+            console.log('No OTP found for email:', email);
+            return {
+                success: false,
+                message: "No OTP found for this email. Please request a new OTP."
+            };
+        }
+
+        // Check if OTP is expired (10 minutes)
+        if (Date.now() - storedData.timestamp > 10 * 60 * 1000) {
+            console.log('OTP expired for email:', email);
+            otpStore.delete(email);
+            return {
+                success: false,
+                message: "OTP has expired. Please request a new one."
+            };
+        }
+
+        if (storedData.otp !== otp) {
+            console.log('Invalid OTP for email:', email);
+            return {
+                success: false,
+                message: "Invalid OTP. Please try again."
+            };
+        }
+
+        // Clear OTP after successful verification
+        otpStore.delete(email);
+
+        // First check if the user exists
+        const userResult = await pool.query(
+            'SELECT * FROM users WHERE email = $1',
+            [email]
+        );
+
+        if (userResult.rows.length === 0) {
+            console.log('User not found in database:', email);
+            return {
+                success: false,
+                message: "User not found in database."
+            };
+        }
+
         // Store the Discord username in the database
+        console.log('Updating Discord username for email:', email);
         await pool.query(
             'UPDATE users SET discord_username = $1 WHERE email = $2',
             [discordUsername, email]
         );
 
         // Assign role to the user
+        console.log('Assigning role for Discord username:', discordUsername);
         const roleResult = await assignRole(discordUsername);
         if (!roleResult.success) {
+            console.log('Failed to assign role:', roleResult.message);
             return {
                 success: false,
                 message: roleResult.message
             };
         }
 
+        console.log('Verification successful for:', email);
         return {
             success: true,
             message: "Email verified successfully and role assigned!"

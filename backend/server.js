@@ -10,12 +10,17 @@ const { sendMail } = require('./mailer');
 const { assignRole, checkUserExists } = require('./discord');
 const { handleVerification, verifyOTP } = require('./verification');
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Serve static files from frontend directory
+app.use(express.static(path.join(__dirname, '../frontend'), {
+    index: 'landing.html'  // Set landing.html as the default index file
+}));
 
 // Store Discord ID mapping and email-Discord pairs
 const discordIdMap = new Map();
@@ -70,24 +75,8 @@ app.post('/api/verify', async (req, res) => {
         });
     }
 
-    // Check if this email is already paired with a different Discord ID
-    const existingDiscordId = emailDiscordPairs.get(email);
-    if (existingDiscordId && existingDiscordId !== discordId) {
-        return res.json({
-            success: false,
-            message: 'This email is already associated with a different Discord account. Please use the same Discord account you used before.'
-        });
-    }
-
-    // First check if the user exists in Discord server
-    const discordCheck = await checkUserExists(discordId);
-    if (!discordCheck.success) {
-        return res.json(discordCheck);
-    }
-
-    // Store Discord username mapping and email-Discord pair
+    // Store Discord ID mapping
     discordIdMap.set(email, discordId);
-    emailDiscordPairs.set(email, discordId);
 
     const result = await handleVerification(email);
     res.json(result);
@@ -104,20 +93,10 @@ app.post('/api/verify-otp', async (req, res) => {
         });
     }
 
-    // Verify the Discord username matches
-    const storedDiscordId = discordIdMap.get(email);
-    if (storedDiscordId !== discordId) {
-        return res.json({
-            success: false,
-            message: 'Discord username does not match the one used for verification'
-        });
-    }
-
     const result = await verifyOTP(email, otp, discordId);
     if (result.success) {
         // Clear the Discord username mapping after successful verification
         discordIdMap.delete(email);
-        // Keep the email-Discord pair for future reference
     }
     
     res.json(result);
@@ -125,7 +104,17 @@ app.post('/api/verify-otp', async (req, res) => {
 
 // Serve the frontend
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(path.join(__dirname, '../frontend/landing.html'));
+});
+
+// Serve the verification page
+app.get('/verify', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/verify.html'));
+});
+
+// Catch-all route to serve landing page for any other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/landing.html'));
 });
 
 app.listen(PORT, () => {

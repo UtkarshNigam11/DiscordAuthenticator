@@ -9,7 +9,8 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages
   ],
 });
 
@@ -25,14 +26,11 @@ client.on('ready', () => {
   isReady = true;
 });
 
-// Wrap the login in a try-catch
-try {
-  if (!process.env.DISCORD_TOKEN) {
-    throw new Error('Discord token is missing from environment variables');
-  }
-  client.login(process.env.DISCORD_TOKEN);
-} catch (error) {
-  console.error('Failed to login to Discord:', error.message);
+// Login to Discord
+if (process.env.DISCORD_TOKEN) {
+  client.login(process.env.DISCORD_TOKEN).catch(error => {
+    console.error('Failed to login to Discord:', error);
+  });
 }
 
 async function waitForReady() {
@@ -127,7 +125,8 @@ async function assignRole(username) {
     const role = guild.roles.cache.find(r => 
       r.name.toLowerCase() === 'verified' || 
       r.name.toLowerCase() === 'algopath verified' ||
-      r.name.toLowerCase() === 'algopath-verified'
+      r.name.toLowerCase() === 'algopath-verified' ||
+      r.name.toLowerCase() === 'premium'
     );
 
     if (!role) {
@@ -136,13 +135,53 @@ async function assignRole(username) {
     }
 
     console.log(`Found role: ${role.name} (ID: ${role.id})`);
+    
+    // Check if member already has the role
+    if (member.roles.cache.has(role.id)) {
+      console.log('Member already has the role');
+      return { success: true, message: 'User already verified!' };
+    }
+
     await member.roles.add(role);
     console.log('Successfully assigned role to member');
     return { success: true, message: 'User verified and role assigned!' };
   } catch (err) {
     console.error('Error assigning role:', err);
-    return { success: false, message: 'Failed to assign role. Check bot permissions or user ID.' };
+    return { success: false, message: 'Failed to assign role. Please try again later.' };
   }
 }
 
-module.exports = { assignRole, checkUserExists };
+// Add welcome message when member joins
+client.on('guildMemberAdd', async (member) => {
+  try {
+    console.log(`New member joined: ${member.user.tag}`);
+    
+    // Create verification URL with username
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?username=${encodeURIComponent(member.user.username)}`;
+    
+    const welcomeMessage = {
+      content: `🎉 Welcome to AlgoPath, ${member.user.username}! 🎉\n\nTo access all channels, please verify your account:\n${verificationUrl}`,
+      allowedMentions: { users: [member.id] }
+    };
+    
+    // Find the welcome channel
+    const welcomeChannel = member.guild.channels.cache.find(ch => 
+      ch.name.toLowerCase() === 'welcome' && 
+      ch.type === 0 // 0 is GUILD_TEXT
+    );
+    
+    if (welcomeChannel) {
+      await welcomeChannel.send(welcomeMessage);
+      console.log(`Sent welcome message in channel ${welcomeChannel.name}`);
+    } else {
+      console.error('Could not find welcome channel. Available channels:');
+      member.guild.channels.cache.forEach(ch => {
+        console.log(`- ${ch.name} (Type: ${ch.type})`);
+      });
+    }
+  } catch (error) {
+    console.error('Error in welcome message:', error);
+  }
+});
+
+module.exports = { assignRole, checkUserExists, client };

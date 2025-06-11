@@ -1,19 +1,9 @@
 // bot.js
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
-const config = require('./config');
 const { handleVerification, verifyOTP } = require('./verification');
-
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
-  partials: [Partials.Channel],
-});
+const { client } = require('./discord');
 
 // Store email-discord user mapping
 const userEmailMap = new Map();
-
-client.on('ready', () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
-});
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
@@ -62,5 +52,3 @@ client.on('messageCreate', async (message) => {
     }
   }
 });
-
-client.login(config.discord.token);
