@@ -157,7 +157,8 @@ client.on('guildMemberAdd', async (member) => {
     console.log(`New member joined: ${member.user.tag}`);
     
     // Create verification URL with username
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify?username=${encodeURIComponent(member.user.username)}`;
+    const baseUrl = process.env.FRONTEND_URL || 'https://web-production-621c.up.railway.app';
+    const verificationUrl = `${baseUrl}/verify?username=${encodeURIComponent(member.user.username)}`;
     
     const welcomeMessage = {
       content: `🎉 Welcome to AlgoPath, ${member.user.username}! 🎉\n\nTo access all channels, please verify your account:\n${verificationUrl}`,
