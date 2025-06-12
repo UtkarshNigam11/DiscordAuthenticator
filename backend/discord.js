@@ -115,27 +115,6 @@ async function assignRole(username) {
 
     console.log('Found member:', member.user.tag);
 
-    // Log all available roles
-    console.log('Available roles in server:');
-    guild.roles.cache.forEach(role => {
-      console.log(`- ${role.name} (ID: ${role.id})`);
-    });
-
-    // Create Verified role (or find existing one)
-    let verifiedRole = guild.roles.cache.find(role => role.name.toLowerCase() === 'verified');
-
-    if (!verifiedRole) {
-      verifiedRole = await guild.roles.create({
-        name: 'Verified',
-        color: '#00ff00',
-        reason: 'Role for verified members',
-        position: 1 // Position it below the @everyone role
-      });
-      console.log('Created new Verified role.');
-    } else {
-      console.log('Found existing Verified role.');
-    }
-
     // Try to find the role (case-insensitive)
     const role = guild.roles.cache.find(r => 
       r.name.toLowerCase() === 'verified' || 
@@ -157,6 +136,7 @@ async function assignRole(username) {
       return { success: true, message: 'User already verified!' };
     }
 
+    // Add the role
     await member.roles.add(role);
     console.log('Successfully assigned role to member');
     return { success: true, message: 'User verified and role assigned!' };
