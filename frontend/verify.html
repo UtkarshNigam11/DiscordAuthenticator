@@ -4,34 +4,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlgoPath Verification</title>
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1c1e 0%, #2d2f34 100%);
+        }
+        .discord-button {
+            background-color: #5865F2;
+            transition: all 0.3s ease;
+        }
+        .discord-button:hover {
+            background-color: #4752C4;
+            transform: translateY(-2px);
+        }
+        .input-field {
+            background-color: #2f3136;
+            border: 1px solid #40444b;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #5865F2;
+            box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.2);
+        }
+        .success-animation {
+            animation: successPulse 2s infinite;
+        }
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="verification-box">
-            <h1>Welcome to AlgoPath!</h1>
-            <p>Please verify your account to access all channels.</p>
-            
-            <form id="verificationForm">
-                <div class="form-group">
-                    <label for="username">Discord Username:</label>
-                    <input type="text" id="username" readonly>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full">
+        <!-- Logo and Title -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Welcome to AlgoPath</h1>
+            <p class="text-gray-400">Verify your account to access all channels</p>
+        </div>
+
+        <!-- Verification Form -->
+        <div class="bg-[#2f3136] rounded-lg p-6 shadow-xl">
+            <form id="verificationForm" class="space-y-4">
+                <!-- Discord Username -->
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-300 mb-1">Discord Username</label>
+                    <input type="text" id="username" readonly 
+                           class="input-field w-full px-4 py-2 rounded-md text-gray-200 bg-[#40444b] cursor-not-allowed">
                 </div>
-                
-                <div class="form-group">
-                    <label for="email">Email Address:</label>
-                    <input type="email" id="email" required placeholder="Enter your email">
+
+                <!-- Email Input -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+                    <input type="email" id="email" required placeholder="Enter your email"
+                           class="input-field w-full px-4 py-2 rounded-md text-gray-200">
                 </div>
-                
-                <div class="form-group" id="otpGroup" style="display: none;">
-                    <label for="otp">OTP:</label>
-                    <input type="text" id="otp" placeholder="Enter OTP from your email">
+
+                <!-- OTP Input (initially hidden) -->
+                <div id="otpGroup" class="hidden">
+                    <label for="otp" class="block text-sm font-medium text-gray-300 mb-1">Verification Code</label>
+                    <input type="text" id="otp" placeholder="Enter the code from your email"
+                           class="input-field w-full px-4 py-2 rounded-md text-gray-200">
+                    <p class="text-sm text-gray-400 mt-1">Check your email for the verification code</p>
                 </div>
-                
-                <button type="submit" id="submitBtn">Send OTP</button>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn"
+                        class="discord-button w-full py-3 px-4 rounded-md text-white font-medium text-sm">
+                    Send Verification Code
+                </button>
             </form>
-            
-            <div id="message" class="message"></div>
+
+            <!-- Message Display -->
+            <div id="message" class="mt-4 p-4 rounded-md hidden"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-gray-400 text-sm">Having trouble? Contact support in Discord</p>
         </div>
     </div>
 
@@ -43,8 +101,10 @@
         if (username) {
             document.getElementById('username').value = username;
         } else {
-            document.getElementById('message').textContent = 'Invalid verification link. Please use the link from the welcome message.';
-            document.getElementById('message').className = 'message error';
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = 'Invalid verification link. Please use the link from the welcome message.';
+            messageDiv.className = 'mt-4 p-4 rounded-md bg-red-500/10 text-red-400 border border-red-500/20';
+            messageDiv.classList.remove('hidden');
             document.getElementById('verificationForm').style.display = 'none';
         }
 
@@ -75,14 +135,16 @@
 
                     const data = await response.json();
                     if (data.success) {
-                        messageDiv.textContent = 'OTP sent to your email! Please check your inbox.';
-                        messageDiv.className = 'message success';
-                        otpGroup.style.display = 'block';
-                        submitBtn.textContent = 'Verify OTP';
+                        messageDiv.textContent = 'Verification code sent! Please check your email.';
+                        messageDiv.className = 'mt-4 p-4 rounded-md bg-green-500/10 text-green-400 border border-green-500/20';
+                        messageDiv.classList.remove('hidden');
+                        otpGroup.classList.remove('hidden');
+                        submitBtn.textContent = 'Verify Code';
                         isOtpSent = true;
                     } else {
                         messageDiv.textContent = data.message;
-                        messageDiv.className = 'message error';
+                        messageDiv.className = 'mt-4 p-4 rounded-md bg-red-500/10 text-red-400 border border-red-500/20';
+                        messageDiv.classList.remove('hidden');
                     }
                 } else {
                     // Verify OTP
@@ -101,16 +163,19 @@
                     const data = await response.json();
                     if (data.success) {
                         messageDiv.textContent = 'Verification successful! You can now close this window and return to Discord.';
-                        messageDiv.className = 'message success';
+                        messageDiv.className = 'mt-4 p-4 rounded-md bg-green-500/10 text-green-400 border border-green-500/20 success-animation';
+                        messageDiv.classList.remove('hidden');
                         form.style.display = 'none';
                     } else {
                         messageDiv.textContent = data.message;
-                        messageDiv.className = 'message error';
+                        messageDiv.className = 'mt-4 p-4 rounded-md bg-red-500/10 text-red-400 border border-red-500/20';
+                        messageDiv.classList.remove('hidden');
                     }
                 }
             } catch (error) {
                 messageDiv.textContent = 'An error occurred. Please try again.';
-                messageDiv.className = 'message error';
+                messageDiv.className = 'mt-4 p-4 rounded-md bg-red-500/10 text-red-400 border border-red-500/20';
+                messageDiv.classList.remove('hidden');
             }
         });
     </script>
