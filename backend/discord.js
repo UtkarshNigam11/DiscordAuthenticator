@@ -156,24 +156,30 @@ client.on('guildMemberAdd', async (member) => {
     const verificationUrl = `${baseUrl}/verify?username=${encodeURIComponent(member.user.username)}`;
     
     const welcomeMessage = {
-      content: `🎉 Welcome to AlgoPath, ${member.user.username}! 🎉\n\nTo access all channels, please verify your account:\n${verificationUrl}`,
+      content: `🎉 Welcome to AlgoPath, ${member.user}! 🎉\n\nTo access all channels, please verify your account:\n${verificationUrl}\n\nIf you have any issues, please contact our support team.`,
       allowedMentions: { users: [member.id] }
     };
     
-    // Find the welcome channel - updated to correctly identify '📌welcome'
-    const welcomeChannel = member.guild.channels.cache.find(ch => 
-      ch.name === '📌welcome' && 
-      ch.type === 0 // 0 is GUILD_TEXT
+    // Find the verify-here channel in INFO & RULES category
+    const infoRulesCategory = member.guild.channels.cache.find(ch => 
+      ch.name.toLowerCase().trim() === '📢 info & rules' && 
+      ch.type === 4 // 4 is GUILD_CATEGORY
     );
-    
-    if (welcomeChannel) {
-      await welcomeChannel.send(welcomeMessage);
-      console.log(`Sent welcome message in channel ${welcomeChannel.name}`);
+
+    if (infoRulesCategory) {
+      const verifyChannel = member.guild.channels.cache.find(ch => 
+        ch.name.toLowerCase().trim() === 'verify-here' && 
+        ch.parentId === infoRulesCategory.id
+      );
+
+      if (verifyChannel) {
+        await verifyChannel.send(welcomeMessage);
+        console.log(`Sent welcome message in channel ${verifyChannel.name}`);
+      } else {
+        console.error('Could not find verify-here channel in INFO & RULES category');
+      }
     } else {
-      console.error('Could not find welcome channel. Available channels:');
-      member.guild.channels.cache.forEach(ch => {
-        console.log(`- ${ch.name} (Type: ${ch.type})`);
-      });
+      console.error('Could not find INFO & RULES category');
     }
   } catch (error) {
     console.error('Error in welcome message:', error);
