@@ -139,6 +139,20 @@ async function assignRole(username) {
     // Add the role
     await member.roles.add(role);
     console.log('Successfully assigned role to member');
+
+    // Send message to the welcome channel after verification
+    const welcomeChannel = member.guild.channels.cache.find(ch => 
+      ch.name.toLowerCase().trim() === '📌welcome' && 
+      ch.type === 0 // 0 is GUILD_TEXT
+    );
+
+    if (welcomeChannel) {
+      await welcomeChannel.send(`✅ Welcome ${member.user}! You're now verified and can access all the channels in AlgoPath Discord.`);
+      console.log(`Sent verification success message to ${welcomeChannel.name}`);
+    } else {
+      console.error('Could not find 📌welcome channel to send verification success message.');
+    }
+
     return { success: true, message: 'User verified and role assigned!' };
   } catch (err) {
     console.error('Error assigning role:', err);
@@ -173,8 +187,12 @@ client.on('guildMemberAdd', async (member) => {
       );
 
       if (verifyChannel) {
+        // Send the initial greeting message
+        await verifyChannel.send(`👋 Welcome ${member.user} to AlgoPath Discord channel!`);
+
+        // Send the detailed verification message
         await verifyChannel.send(welcomeMessage);
-        console.log(`Sent welcome message in channel ${verifyChannel.name}`);
+        console.log(`Sent welcome and verification messages in channel ${verifyChannel.name}`);
       } else {
         console.error('Could not find verify-here channel in INFO & RULES category');
       }
