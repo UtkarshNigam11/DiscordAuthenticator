@@ -9,6 +9,7 @@ const { generateOTP, validateOTP } = require('./otp');
 const { sendMail } = require('./mailer');
 const { assignRole, checkUserExists } = require('./discord');
 const { handleVerification, verifyOTP } = require('./verification');
+const { client } = require('./discord'); // Import the Discord client
 
 // Initialize Express app
 const app = express();
@@ -121,6 +122,20 @@ app.use((req, res, next) => {
     }
 });
 
+// Start the server and Discord bot
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Login to Discord
+  if (process.env.DISCORD_TOKEN) {
+    client.login(process.env.DISCORD_TOKEN)
+      .then(() => {
+        console.log('Discord bot is ready!');
+      })
+      .catch(error => {
+        console.error('Failed to login to Discord:', error);
+      });
+  } else {
+    console.error('Discord token is missing! Bot will not start.');
+  }
 });

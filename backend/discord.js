@@ -2,6 +2,8 @@ const { Client, GatewayIntentBits, Partials } = require('discord.js');
 require('dotenv').config();
 const { checkLinkExists } = require('./linkValidator');
 const axios = require('axios');
+const cron = require('node-cron');
+const config = require('./config');
 
 // Log token status (without exposing the actual token)
 console.log('Discord Token Status:', process.env.DISCORD_TOKEN ? 'Present' : 'Missing');
@@ -15,6 +17,40 @@ const client = new Client({
     GatewayIntentBits.DirectMessages
   ],
   partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember, Partials.Reaction],
+});
+
+// Track bot ready state
+let isReady = false;
+
+// Handle bot ready event
+client.once('ready', () => {
+  console.log(`Logged in as ${client.user.tag}!`);
+  isReady = true;
+
+  // Schedule daily question posting at 10:00 AM IST (04:30 UTC)
+  // Using cron syntax: second(0-59) minute(0-59) hour(0-23) day(1-31) month(1-12) day-of-week(0-6)
+  cron.schedule('0 30 4 * * *', async () => {
+    console.log('Running scheduled daily question task');
+    // Get all guilds the bot is in
+    client.guilds.cache.forEach(guild => {
+      postDailyQuestion(guild);
+    });
+  });
+  console.log('Daily question scheduler initialized');
+});
+
+// Handle reconnection
+client.on('disconnect', () => {
+  console.log('Bot disconnected. Attempting to reconnect...');
+  isReady = false;
+});
+
+client.on('reconnecting', () => {
+  console.log('Bot is reconnecting...');
+});
+
+client.on('error', (error) => {
+  console.error('Discord client error:', error);
 });
 
 // Topic list for LeetCode
@@ -139,9 +175,10 @@ async function showAvailableTopics(message) {
 
 // Message event handler
 client.on('messageCreate', async (message) => {
+  // Ignore messages from bots
   if (message.author.bot) return;
 
-  // Check if the message is in the questions channel
+  // All other commands should only work in the questions channel
   if (message.channel.name.toLowerCase() !== 'questions') {
     return;
   }
@@ -225,28 +262,6 @@ client.on('messageCreate', async (message) => {
     console.log('=== !leetcode Command Processing Complete ===');
   }
 });
-
-// Login to Discord
-if (process.env.DISCORD_TOKEN) {
-  client.login(process.env.DISCORD_TOKEN).catch(error => {
-    console.error('Failed to login to Discord:', error);
-  });
-}
-
-async function waitForReady() {
-  if (isReady) return;
-  
-  return new Promise((resolve) => {
-    const checkReady = () => {
-      if (isReady) {
-        resolve();
-      } else {
-        setTimeout(checkReady, 100);
-      }
-    };
-    checkReady();
-  });
-}
 
 // New function to check if user exists in server
 async function checkUserExists(username) {
@@ -404,8 +419,24 @@ client.on('guildMemberAdd', async (member) => {
   }
 });
 
+async function waitForReady() {
+  if (isReady) return;
+  
+  return new Promise((resolve) => {
+    const checkReady = () => {
+      if (isReady) {
+        resolve();
+      } else {
+        setTimeout(checkReady, 100);
+      }
+    };
+    checkReady();
+  });
+}
+
 module.exports = {
-  checkUserExists,
+  client,
+  waitForReady,
   assignRole,
-  client
+  checkUserExists
 };
