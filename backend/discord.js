@@ -1,6 +1,8 @@
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, ChannelType } = require('discord.js');
 require('dotenv').config();
 const { checkLinkExists } = require('./linkValidator');
+const { generateResponse } = require('./gemini');
+const { QUIZ_TYPES, createQuiz, joinQuiz, handleAnswer } = require('./quiz');
 const axios = require('axios');
 const cron = require('node-cron');
 const config = require('./config');
@@ -23,9 +25,48 @@ const client = new Client({
 let isReady = false;
 
 // Handle bot ready event
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
   isReady = true;
+
+  // Create quiz channel if it doesn't exist
+  const guild = client.guilds.cache.first();
+  if (guild) {
+    // Find the QUIZS category
+    const quizCategory = guild.channels.cache.find(
+      channel => channel.name === 'QUIZS' && channel.type === ChannelType.GuildCategory
+    );
+
+    if (!quizCategory) {
+      console.error('QUIZS category not found!');
+      return;
+    }
+
+    const quizChannel = guild.channels.cache.find(
+      channel => channel.name.toLowerCase() === '🎯quiz-arena'
+    );
+    
+    if (!quizChannel) {
+      try {
+        await guild.channels.create({
+          name: '🎯quiz-arena',
+          type: ChannelType.GuildText,
+          topic: 'Start and join 1v1 quizzes here! Use !startquiz to begin.',
+          parent: quizCategory.id, // Place in QUIZS category
+          permissionOverwrites: [
+            {
+              id: guild.id,
+              allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'],
+              deny: ['AddReactions']
+            }
+          ]
+        });
+        console.log('Created quiz channel: 🎯quiz-arena in QUIZS category');
+      } catch (error) {
+        console.error('Error creating quiz channel:', error);
+      }
+    }
+  }
 
   // Schedule daily question posting at 10:00 AM IST (04:30 UTC)
   // Using cron syntax: second(0-59) minute(0-59) hour(0-23) day(1-31) month(1-12) day-of-week(0-6)
@@ -178,6 +219,57 @@ client.on('messageCreate', async (message) => {
   // Ignore messages from bots
   if (message.author.bot) return;
 
+  // Handle quiz commands
+  if (message.content.startsWith('!startquiz')) {
+    const args = message.content.split(' ');
+    if (args.length !== 2) {
+      return message.reply('Usage: !startquiz <type>\nTypes: core-cs, mental-ability');
+    }
+
+    const type = args[1].toLowerCase();
+    const result = await createQuiz(message.author, type, message.guild);
+    return message.reply(result.message);
+  }
+
+  if (message.content.startsWith('!joinquiz')) {
+    const args = message.content.split(' ');
+    if (args.length !== 2) {
+      return message.reply('Usage: !joinquiz <creator_id>');
+    }
+
+    const creatorId = args[1];
+    const result = await joinQuiz(message.author, creatorId, message.guild);
+    return message.reply(result.message);
+  }
+
+  // Handle AI help channel messages
+  if (message.channel.name.toLowerCase() === '🤖ai-help') {
+    // Check if message starts with !ai
+    if (message.content.startsWith('!ai')) {
+      try {
+        // Get the question part after !ai
+        const question = message.content.slice(3).trim();
+        
+        if (!question) {
+          return message.reply('Please provide a question after !ai. For example: `!ai how do I implement binary search?`');
+        }
+
+        // Show typing indicator
+        await message.channel.sendTyping();
+        
+        // Generate response from Gemini
+        const response = await generateResponse(question);
+        
+        // Send the response
+        await message.reply(response);
+      } catch (error) {
+        console.error('Error in AI help channel:', error);
+        await message.reply('Sorry, I encountered an error while processing your request. Please try again later.');
+      }
+    }
+    return;
+  }
+
   // All other commands should only work in the questions channel
   if (message.channel.name.toLowerCase() !== 'questions') {
     return;
@@ -211,7 +303,7 @@ client.on('messageCreate', async (message) => {
           console.log(`Link ${problemUrl} exists. Sending to channel.`);
           await sendQuestionToChannel(message.guild, message, problemUrl, 'JobOverflow');
           foundValidLink = true;
-        } else {
+      } else {
           console.log(`Link ${problemUrl} does not exist, trying another...`);
           attempts++;
         }
@@ -261,6 +353,32 @@ client.on('messageCreate', async (message) => {
     }
     console.log('=== !leetcode Command Processing Complete ===');
   }
+});
+
+// Handle button interactions
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId.startsWith('join_quiz_')) {
+        await interaction.deferUpdate(); // Defer the update immediately
+        const creatorId = interaction.customId.split('_')[2];
+        const result = await joinQuiz(interaction.user, creatorId, interaction.guild);
+        
+        await interaction.followUp({ 
+            content: result.message,
+            ephemeral: true // Only visible to the user who clicked
+        });
+    }
+    else if (interaction.customId.startsWith('answer_')) {
+        await interaction.deferUpdate(); // Defer the update immediately
+        const answer = interaction.customId.split('_')[1];
+        const result = await handleAnswer(interaction.user.id, answer, interaction.channel);
+        
+        await interaction.followUp({ 
+            content: result.message,
+            ephemeral: true // Only visible to the user who clicked
+        });
+    }
 });
 
 // New function to check if user exists in server
