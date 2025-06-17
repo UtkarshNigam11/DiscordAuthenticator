@@ -7,7 +7,8 @@ const path = require('path');
 const { pool } = require('./db');
 const { generateOTP, validateOTP } = require('./otp');
 const { sendMail } = require('./mailer');
-const { assignRole, checkUserExists } = require('./discord');
+const { assignRole } = require('./features/verification');
+const { checkUserExists } = require('./discord');
 const { handleVerification, verifyOTP } = require('./verification');
 const { client } = require('./discord'); // Import the Discord client
 

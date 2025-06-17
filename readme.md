@@ -1,98 +1,85 @@
-# Discord AlgoPath Bot
+# AlgoPath Discord Bot
 
-A Discord bot designed to manage user verification through email OTP for the AlgoPath community.
+A Discord bot for AlgoPath that provides coding questions, AI assistance, user verification, and interactive quizzes.
 
 ## Features
 
-- Email-based user verification system
-- OTP generation and verification
-- Role management for verified users
-- Secure database integration
-- Email notification system
+### 1. Questions Feature
+- `!question` - Get a random JobOverflow question
+- `!leetcode` - Get a random LeetCode question
+  - Usage: `!leetcode <difficulty> <topic>`
+  - Example: `!leetcode easy array`
+  - Available difficulties: easy, medium, hard
+  - Use `!leetcode topics` to see available topics
+- Daily questions posted automatically at 10:00 AM IST
 
-## Setup Instructions
+### 2. AI Help Feature
+- `!ai help me find` - Get AI-powered help for coding questions
+  - Example: `!ai help me find how to implement binary search`
+  - Uses Google's Gemini API for intelligent responses
 
-1. **Install Dependencies**
-```bash
-npm install
-```
+### 3. Verification Feature
+- External web form for user verification
+- Automatic role assignment after verification
+- Welcome messages for new members
 
-2. **Environment Configuration**
-Create a `.env` file in the root directory with the following variables:
+### 4. Quiz Feature
+- Interactive 1v1 quizzes in the 🎯quiz-arena channel
+- Available quiz types:
+  - `core-cs`: Computer Science fundamentals
+  - `mental-ability`: Logical reasoning and problem-solving
+- Commands:
+  - `!startquiz <type>` - Start a new quiz
+  - `!joinquiz <creator_id>` - Join an existing quiz
+- Features:
+  - Multiple choice questions
+  - Real-time scoring
+  - 30-second time limit per question
+  - Automatic winner determination
 
-```
-# Discord Bot Configuration
-DISCORD_TOKEN=your_discord_bot_token
+## Setup
 
-# Email Configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_email_password
-
-# Database Configuration
-DB_HOST=localhost
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=algopath_db
-```
-
-3. **Database Setup**
-- Ensure PostgreSQL is installed and running
-- Create a database named `algopath_db`
-- Run the database migrations
-
-4. **Run the Bot**
-```bash
-node backend/bot.js
-```
-
-## Commands
-
-- `!verify <email>` - Request email verification
-- `!otp <code>` - Verify OTP code received via email
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file with the following variables:
+   ```
+   DISCORD_TOKEN=your_discord_bot_token
+   DISCORD_GUILD_ID=your_guild_id
+   GEMINI_API_KEY=your_gemini_api_key
+   FRONTEND_URL=your_frontend_url
+   ```
+4. Start the bot:
+   ```bash
+   npm start
+   ```
 
 ## Project Structure
 
 ```
-Discord_AlgoPath/
-├── backend/
-│   ├── bot.js            # Main bot file
-│   ├── config.js         # Configuration
-│   ├── otp.js            # OTP generation
-│   └── mailer.js         # Email handling
-├── frontend/             # Frontend components
-├── .env                  # Environment variables
-├── package.json          # Project dependencies
-└── README.md             # Project documentation
+backend/
+├── features/           # Feature modules
+│   ├── questions.js    # Question-related features
+│   ├── ai-help.js      # AI assistance features
+│   ├── verification.js # User verification features
+│   ├── quiz.js         # Interactive quiz features
+│   └── index.js        # Feature exports
+├── config.js          # Configuration
+├── db.js             # Database connection
+├── discord.js        # Discord client setup
+└── server.js         # Express server
 ```
-
-## Usage
-
-1. Users can verify their email by sending `!verify your.email@algouniversity.com`
-2. The bot will send an OTP to the provided email
-3. Users can verify by sending `!otp 123456` with their received code
-4. Verified users will automatically receive the "Verified" role
-
-## Security
-
-- All sensitive information is stored in environment variables
-- OTPs are time-limited for security
-- Database connections are encrypted
-- Email communication is secure
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch
+2. Create a feature branch
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
 
 ## License
 
-ISC License
-
-## Support
-
-For support, create an issue in the GitHub repository.
+This project is licensed under the MIT License.
