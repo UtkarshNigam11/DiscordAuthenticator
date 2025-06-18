@@ -39,17 +39,17 @@ async function checkPremiumStatus(email) {
     }
 }
 
-// Check if Discord username is already associated with another email
-async function checkDiscordUsernameExists(discordUsername) {
+// Check if Discord ID is already associated with another email
+async function checkDiscordIdExists(discordId) {
     try {
         const result = await pool.query(
-            'SELECT email FROM users WHERE discord_username = $1',
-            [discordUsername]
+            'SELECT email FROM users WHERE discord_id = $1',
+            [discordId]
         );
         return result.rows.length > 0;
     } catch (error) {
-        console.error('Error checking Discord username:', error);
-        return false;
+        console.error('Error checking Discord ID:', error);
+        throw error;
     }
 }
 
@@ -96,7 +96,7 @@ async function handleVerification(email) {
 }
 
 // Verify OTP
-async function verifyOTP(email, otp, discordUsername) {
+async function verifyOTP(email, otp, discordId) {
     try {
         const storedData = otpStore.get(email);
         if (!storedData) {
@@ -142,16 +142,16 @@ async function verifyOTP(email, otp, discordUsername) {
             };
         }
 
-        // Store the Discord username in the database
-        console.log('Updating Discord username for email:', email);
+        // Store the Discord ID in the database
+        console.log('Updating Discord ID for email:', email);
         await pool.query(
-            'UPDATE users SET discord_username = $1 WHERE email = $2',
-            [discordUsername, email]
+            'UPDATE users SET discord_id = $1 WHERE email = $2',
+            [discordId, email]
         );
 
         // Assign role to the user
-        console.log('Assigning role for Discord username:', discordUsername);
-        const roleResult = await assignRole(discordUsername);
+        console.log('Assigning role for Discord ID:', discordId);
+        const roleResult = await assignRole(discordId);
         if (!roleResult.success) {
             console.log('Failed to assign role:', roleResult.message);
             return {

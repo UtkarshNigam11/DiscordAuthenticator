@@ -5,7 +5,7 @@ const { client } = require('../discord');
 // Meme contest configuration
 const CONTEST_CONFIG = {
   CHANNEL_NAME: 'dev-lol',
-  CONTEST_DURATION_MINUTES: 2, // Set to 2 minutes for testing
+  CONTEST_DURATION_MINUTES: 4320, // 3 days
   LAUGH_REACTION_EMOJI: '😂', // Kept for reaction, but not used for filtering
   MEME_LORD_ROLE_NAME: 'Meme-Lord',
   ROLE_DURATION_DAYS: 3
@@ -104,7 +104,7 @@ async function handleNewMessage(message) {
       
       // Store submission in database
       await pool.query(
-        'INSERT INTO meme_submissions (contest_id, user_id, message_id) VALUES ($1, $2, $3) ON CONFLICT (contest_id, message_id) DO NOTHING',
+        'INSERT INTO meme_submissions (contest_id, discord_id, message_id) VALUES ($1, $2, $3) ON CONFLICT (contest_id, message_id) DO NOTHING',
         [activeContest.id, message.author.id, message.id]
       );
 
@@ -175,8 +175,8 @@ async function endContest(contestId) {
 
     // Update contest with winner
     await pool.query(
-      'UPDATE meme_contests SET status = $1, winner_user_id = $2, winner_message_id = $3 WHERE id = $4',
-      ['ended', winner.user_id, winner.message_id, contestId]
+      'UPDATE meme_contests SET status = $1, winner_discord_id = $2, winner_message_id = $3 WHERE id = $4',
+      ['ended', winner.discord_id, winner.message_id, contestId]
     );
 
     // Get guild and channel
@@ -201,9 +201,9 @@ async function endContest(contestId) {
     }
 
     // Get winner member
-    const winnerMember = await guild.members.fetch(winner.user_id);
+    const winnerMember = await guild.members.fetch(winner.discord_id);
     if (!winnerMember) {
-      console.error('Could not find winner member:', winner.user_id);
+      console.error('Could not find winner member:', winner.discord_id);
       return;
     }
 
@@ -213,7 +213,7 @@ async function endContest(contestId) {
     // Remove role after specified duration
     setTimeout(async () => {
       try {
-        const member = await guild.members.fetch(winner.user_id);
+        const member = await guild.members.fetch(winner.discord_id);
         if (member && member.roles.cache.has(memeLordRole.id)) {
           await member.roles.remove(memeLordRole);
           console.log(`Removed Meme-Lord role from ${member.user.tag}`);
@@ -226,13 +226,13 @@ async function endContest(contestId) {
     // Send winner announcement
     const embed = new EmbedBuilder()
       .setTitle('🏆 Meme Contest Winner!')
-      .setDescription(`Congratulations <@${winner.user_id}>! Your meme got ${winner.reaction_count} ${CONTEST_CONFIG.LAUGH_REACTION_EMOJI} reactions and won the Meme-Lord role for ${CONTEST_CONFIG.ROLE_DURATION_DAYS} days!`)
+      .setDescription(`Congratulations <@${winner.discord_id}>! Your meme got ${winner.reaction_count} ${CONTEST_CONFIG.LAUGH_REACTION_EMOJI} reactions and won the Meme-Lord role for ${CONTEST_CONFIG.ROLE_DURATION_DAYS} days!`)
       .setColor('#FFD700')
       .setTimestamp();
 
     await channel.send({ embeds: [embed] });
 
-    console.log(`Meme contest ${contestId} ended. Winner: ${winner.user_id} with ${winner.reaction_count} reactions`);
+    console.log(`Meme contest ${contestId} ended. Winner: ${winner.discord_id} with ${winner.reaction_count} reactions`);
     activeContest = null;
 
   } catch (error) {
@@ -259,7 +259,7 @@ async function getContestStatus() {
     }
 
     const result = await pool.query(
-      'SELECT user_id, reaction_count FROM meme_submissions WHERE contest_id = $1 ORDER BY reaction_count DESC LIMIT 5',
+      'SELECT discord_id, reaction_count FROM meme_submissions WHERE contest_id = $1 ORDER BY reaction_count DESC LIMIT 5',
       [activeContest.id]
     );
 

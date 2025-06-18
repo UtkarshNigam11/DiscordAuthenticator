@@ -100,7 +100,7 @@ client.on('messageCreate', async (message) => {
             {
               name: 'Top Submissions',
               value: status.topSubmissions.length > 0 
-                ? status.topSubmissions.map((sub, i) => `${i + 1}. <@${sub.user_id}> - ${sub.reaction_count} 😂`).join('\n')
+                ? status.topSubmissions.map((sub, i) => `${i + 1}. <@${sub.discord_id}> - ${sub.reaction_count} 😂`).join('\n')
                 : 'No submissions yet'
             }
           ],

@@ -111,7 +111,7 @@ async function handleNewMember(member) {
     
     // Create verification URL with username
     const baseUrl = process.env.FRONTEND_URL || 'https://web-production-621c.up.railway.app';
-    const verificationUrl = `${baseUrl}/verify?username=${encodeURIComponent(member.user.username)}`;
+    const verificationUrl = `${baseUrl}/verify?discord_id=${encodeURIComponent(member.user.id)}`;
     
     const welcomeMessage = {
       content: `🎉 Welcome to AlgoPath, ${member.user}! 🎉\n\nTo access all channels, please verify your account:\n${verificationUrl}\n\nIf you have any issues, please contact our support team.`,

@@ -55,15 +55,8 @@ app.post('/verify-otp', async (req, res) => {
   const result = await validateOTP(email, otp);
   if (!result.success) return res.json(result);
 
-  const user = await pool.query('SELECT discord_id FROM users WHERE email = $1', [email]);
-  const discordId = user.rows[0].discord_id;
-
-  const roleResult = await assignRole(discordId);
-  if (roleResult.success) {
-    await pool.query('UPDATE users SET otp = NULL WHERE email = $1', [email]);
-  }
-
-  res.json(roleResult);
+  await pool.query('UPDATE users SET otp = NULL WHERE email = $1', [email]);
+  res.json({ success: true, message: 'OTP verified and cleared.' });
 });
 
 // API endpoint for initial verification request
@@ -73,7 +66,7 @@ app.post('/api/verify', async (req, res) => {
     if (!email || !discordId) {
         return res.json({
             success: false,
-            message: 'Email and Discord username are required'
+            message: 'Email and Discord ID are required'
         });
     }
 
@@ -91,13 +84,13 @@ app.post('/api/verify-otp', async (req, res) => {
     if (!email || !discordId || !otp) {
         return res.json({
             success: false,
-            message: 'Email, Discord username, and OTP are required'
+            message: 'Email, Discord ID, and OTP are required'
         });
     }
 
     const result = await verifyOTP(email, otp, discordId);
     if (result.success) {
-        // Clear the Discord username mapping after successful verification
+        // Clear the Discord ID mapping after successful verification
         discordIdMap.delete(email);
     }
     

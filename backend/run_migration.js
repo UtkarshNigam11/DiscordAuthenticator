@@ -9,8 +9,7 @@ async function runMigration() {
             '001_create_users_table.sql',
             '002_add_premium_user.sql',
             '003_add_discord_mapping.sql',
-            '004_create_meme_contest.sql',
-            'add_discord_username.sql'
+            '004_create_meme_contest.sql'
         ];
 
         for (const migrationFile of migrations) {
