@@ -4,7 +4,9 @@ const { pool } = require('../db');
 async function assignRole(discordId) {
   try {
     const client = require('../discord').client;
-    await client.waitForReady();
+    if (!client.readyAt) {
+      throw new Error('Discord client is not ready yet.');
+    }
     
     if (!process.env.DISCORD_GUILD_ID) {
       console.error('DISCORD_GUILD_ID is missing');
