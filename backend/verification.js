@@ -1,6 +1,5 @@
 const { pool } = require('./db');
 const { sendMail } = require('./mailer');
-const { assignRole } = require('./discord');
 const crypto = require('crypto');
 
 // Store OTPs temporarily (in production, use Redis or similar)
