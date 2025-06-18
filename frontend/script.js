@@ -26,7 +26,7 @@ function verifyOTP() {
                 
                 // Redirect to Discord after a short delay
                 setTimeout(() => {
-                    window.location.href = 'https://discord.gg/Ez9sqs5m';
+                    window.location.href = 'https://discord.gg/794eeqF8RV';
                 }, 2000);
             } else {
                 showMessage(data.message || 'Verification failed. Please try again.', 'error');

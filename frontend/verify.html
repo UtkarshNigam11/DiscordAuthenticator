@@ -54,10 +54,10 @@
         <!-- Verification Form -->
         <div class="bg-[#2f3136] rounded-lg p-6 shadow-xl">
             <form id="verificationForm" class="space-y-4">
-                <!-- Discord Username -->
+                <!-- Discord ID -->
                 <div>
-                    <label for="username" class="block text-sm font-medium text-gray-300 mb-1">Discord Username</label>
-                    <input type="text" id="username" readonly 
+                    <label for="discord_id" class="block text-sm font-medium text-gray-300 mb-1">Discord ID</label>
+                    <input type="text" id="discord_id" readonly 
                            class="input-field w-full px-4 py-2 rounded-md text-gray-200 bg-[#40444b] cursor-not-allowed">
                 </div>
 
@@ -94,12 +94,12 @@
     </div>
 
     <script>
-        // Get username from URL parameter
+        // Get discord_id from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username');
+        const discordId = urlParams.get('discord_id');
         
-        if (username) {
-            document.getElementById('username').value = username;
+        if (discordId) {
+            document.getElementById('discord_id').value = discordId;
         } else {
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = 'Invalid verification link. Please use the link from the welcome message.';
@@ -129,7 +129,7 @@
                         },
                         body: JSON.stringify({
                             email,
-                            discordId: username
+                            discordId: discordId
                         })
                     });
 
@@ -155,7 +155,7 @@
                         },
                         body: JSON.stringify({
                             email,
-                            discordId: username,
+                            discordId: discordId,
                             otp
                         })
                     });
