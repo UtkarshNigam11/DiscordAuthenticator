@@ -5,8 +5,8 @@ const { client } = require('../discord');
 // Meme contest configuration
 const CONTEST_CONFIG = {
   CHANNEL_NAME: 'dev-lol',
-  CONTEST_DURATION_DAYS: 3,
-  LAUGH_REACTION_EMOJI: '😂', // You can change this to any laughing emoji
+  CONTEST_DURATION_MINUTES: 2, // Set to 2 minutes for testing
+  LAUGH_REACTION_EMOJI: '😂', // Kept for reaction, but not used for filtering
   MEME_LORD_ROLE_NAME: 'Meme-Lord',
   ROLE_DURATION_DAYS: 3
 };
@@ -57,20 +57,29 @@ function startContestChecks() {
 // Start a new meme contest
 async function startNewContest(channelId) {
   try {
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + CONTEST_CONFIG.CONTEST_DURATION_DAYS);
+    // Use UTC timestamps to avoid timezone issues with Railway
+    const startDate = new Date().toISOString();
+    const endDate = new Date(Date.now() + (CONTEST_CONFIG.CONTEST_DURATION_MINUTES * 60 * 1000)).toISOString();
+
+    console.log('=== DEBUG TIMESTAMPS ===');
+    console.log('Start Date (UTC):', startDate);
+    console.log('End Date (UTC):', endDate);
+    console.log('Expected minutes:', CONTEST_CONFIG.CONTEST_DURATION_MINUTES);
 
     const result = await pool.query(
-      'INSERT INTO meme_contests (channel_id, end_date) VALUES ($1, $2) RETURNING *',
-      [channelId, endDate]
+      'INSERT INTO meme_contests (channel_id, start_date, end_date, status, created_at) VALUES ($1, $2::timestamp with time zone, $3::timestamp with time zone, $4, $5::timestamp with time zone) RETURNING *',
+      [channelId, startDate, endDate, 'active', startDate]
     );
 
     activeContest = result.rows[0];
     console.log('Started new meme contest:', activeContest.id);
+    console.log('DB Start Date:', activeContest.start_date);
+    console.log('DB End Date:', activeContest.end_date);
+    console.log('=== END DEBUG ===');
 
     return { 
       success: true, 
-      message: `🎉 New meme contest started! Post your best memes in <#${channelId}> and get the most ${CONTEST_CONFIG.LAUGH_REACTION_EMOJI} reactions to win the Meme-Lord role! Contest ends in ${CONTEST_CONFIG.CONTEST_DURATION_DAYS} days.`,
+      message: `🎉 New meme contest started! Post your best memes in <#${channelId}> and get the most reactions to win the Meme-Lord role! Contest ends in ${CONTEST_CONFIG.CONTEST_DURATION_MINUTES} minutes.`,
       contest: activeContest
     };
   } catch (error) {
@@ -113,10 +122,17 @@ async function handleReactionUpdate(message, reaction) {
       return;
     }
 
-    // Only track laughing reactions
-    if (reaction.emoji.name !== CONTEST_CONFIG.LAUGH_REACTION_EMOJI.replace(/[^\w]/g, '')) {
-      return;
-    }
+    // Always fetch full message and reaction if partial
+    if (reaction.partial) await reaction.fetch();
+    if (reaction.message.partial) await reaction.message.fetch();
+
+    // Debug log
+    console.log('Reaction update:', {
+      emoji: reaction.emoji.name,
+      count: reaction.count,
+      messageId: message.id,
+      contestId: activeContest.id
+    });
 
     // Update reaction count in database
     await pool.query(
@@ -231,18 +247,26 @@ async function getContestStatus() {
       return { success: false, message: 'No active contest running.' };
     }
 
+    // Check if contest has expired
+    const timeLeft = new Date(activeContest.end_date) - new Date();
+    const minutesLeft = Math.ceil(timeLeft / (1000 * 60));
+
+    // If contest has expired, end it automatically
+    if (timeLeft <= 0) {
+      console.log('Contest has expired, ending automatically...');
+      await endContest(activeContest.id);
+      return { success: false, message: 'No active contest running.' };
+    }
+
     const result = await pool.query(
       'SELECT user_id, reaction_count FROM meme_submissions WHERE contest_id = $1 ORDER BY reaction_count DESC LIMIT 5',
       [activeContest.id]
     );
 
-    const timeLeft = new Date(activeContest.end_date) - new Date();
-    const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
     return {
       success: true,
       contest: activeContest,
-      daysLeft,
+      minutesLeft,
       topSubmissions: result.rows
     };
   } catch (error) {
