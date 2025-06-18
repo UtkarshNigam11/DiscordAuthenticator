@@ -1,6 +1,7 @@
 const { pool } = require('./db');
 const { sendMail } = require('./mailer');
 const crypto = require('crypto');
+const { assignRole } = require('./features/verification');
 
 // Store OTPs temporarily (in production, use Redis or similar)
 const otpStore = new Map();
