@@ -1,7 +1,7 @@
 const { pool } = require('../db');
 
-// Function to assign role to user
-async function assignRole(username) {
+// Function to assign role to user by Discord ID
+async function assignRole(discordId) {
   try {
     const client = require('../discord').client;
     await client.waitForReady();
@@ -16,13 +16,16 @@ async function assignRole(username) {
     console.log('Found guild:', guild.name);
 
     await guild.members.fetch();
-    const member = guild.members.cache.find(m => 
-      m.user.username.toLowerCase() === username.toLowerCase() ||
-      m.user.tag.toLowerCase() === username.toLowerCase()
-    );
+    let member;
+    try {
+      member = await guild.members.fetch(discordId);
+    } catch (err) {
+      console.error('Could not find member with Discord ID:', discordId);
+      return { success: false, message: 'Could not find user in the server. Make sure you are a member of the server.' };
+    }
 
     if (!member) {
-      console.error('Could not find member with username:', username);
+      console.error('Could not find member with Discord ID:', discordId);
       return { success: false, message: 'Could not find user in the server. Make sure you are a member of the server.' };
     }
 
@@ -109,7 +112,7 @@ async function handleNewMember(member) {
   try {
     console.log(`New member joined: ${member.user.tag}`);
     
-    // Create verification URL with username
+    // Create verification URL with discord_id
     const baseUrl = process.env.FRONTEND_URL || 'https://web-production-621c.up.railway.app';
     const verificationUrl = `${baseUrl}/verify?discord_id=${encodeURIComponent(member.user.id)}`;
     
@@ -118,30 +121,18 @@ async function handleNewMember(member) {
       allowedMentions: { users: [member.id] }
     };
     
-    // Find the verify-here channel in INFO & RULES category
-    const infoRulesCategory = member.guild.channels.cache.find(ch => 
-      ch.name.toLowerCase().trim() === '📢 info & rules' && 
-      ch.type === 4 // 4 is GUILD_CATEGORY
+    // Find the welcome channel
+    const welcomeChannel = member.guild.channels.cache.find(ch => 
+      ch.name.toLowerCase().trim() === 'welcome' && 
+      ch.type === 0 // 0 is GUILD_TEXT
     );
 
-    if (infoRulesCategory) {
-      const verifyChannel = member.guild.channels.cache.find(ch => 
-        ch.name.toLowerCase().trim() === 'verify-here' && 
-        ch.parentId === infoRulesCategory.id
-      );
-
-      if (verifyChannel) {
-        // Send the initial greeting message
-        await verifyChannel.send(`👋 Welcome ${member.user} to AlgoPath Discord channel!`);
-
-        // Send the detailed verification message
-        await verifyChannel.send(welcomeMessage);
-        console.log(`Sent welcome and verification messages in channel ${verifyChannel.name}`);
-      } else {
-        console.error('Could not find verify-here channel in INFO & RULES category');
-      }
+    if (welcomeChannel) {
+      // Send only the detailed welcome message
+      await welcomeChannel.send(welcomeMessage);
+      console.log(`Sent welcome and verification message in channel ${welcomeChannel.name}`);
     } else {
-      console.error('Could not find INFO & RULES category');
+      console.error('Could not find welcome channel');
     }
   } catch (error) {
     console.error('Error in welcome message:', error);
