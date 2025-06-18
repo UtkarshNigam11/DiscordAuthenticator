@@ -2,9 +2,16 @@
 const { handleVerification, verifyOTP } = require('./verification');
 const { client } = require('./discord');
 const { checkLinkExists } = require('./linkValidator');
+const { memeContest } = require('./features');
 
 // Store email-discord user mapping
 const userEmailMap = new Map();
+
+// Initialize meme contest system when bot starts
+client.once('ready', async () => {
+  console.log(`Logged in as ${client.user.tag}`);
+  await memeContest.initializeMemeContest();
+});
 
 // Export the client for use in other files
 module.exports = {
@@ -21,6 +28,11 @@ client.on('messageCreate', async (message) => {
   console.log(`Author: ${message.author.tag} (${message.author.id})`);
   console.log(`Content: ${message.content}`);
   console.log('==================');
+
+  // Handle meme contest messages
+  if (message.channel.name === memeContest.CONTEST_CONFIG.CHANNEL_NAME) {
+    await memeContest.handleNewMessage(message);
+  }
 
   // Step 1: User sends !verify email@example.com
   if (message.content.startsWith('!verify')) {
@@ -103,5 +115,69 @@ client.on('messageCreate', async (message) => {
       await message.channel.send('Sorry, I could not find a valid random question at this time. Please try again later.');
     }
     console.log('=== !question Command Processing Complete ===');
+  }
+
+  // Meme contest commands
+  if (message.content === '!startmeme') {
+    // Check if user has admin permissions
+    if (!message.member.permissions.has('ADMINISTRATOR')) {
+      return message.reply({ content: `<@${message.author.id}> ❌ You need administrator permissions to start a meme contest.` });
+    }
+
+    const result = await memeContest.startNewContest(message.channel.id);
+    return message.reply({ content: `<@${message.author.id}> ${result.message}` });
+  }
+
+  if (message.content === '!memestatus') {
+    const status = await memeContest.getContestStatus();
+    if (status.success) {
+      const embed = {
+        title: '🎭 Meme Contest Status',
+        description: `Contest ends in ${status.daysLeft} days`,
+        fields: [
+          {
+            name: 'Top Submissions',
+            value: status.topSubmissions.length > 0 
+              ? status.topSubmissions.map((sub, i) => `${i + 1}. <@${sub.user_id}> - ${sub.reaction_count} 😂`).join('\n')
+              : 'No submissions yet'
+          }
+        ],
+        color: 0x0099ff
+      };
+      return message.reply({ embeds: [embed] });
+    } else {
+      return message.reply({ content: `<@${message.author.id}> ${status.message}` });
+    }
+  }
+});
+
+// Handle reaction updates for meme contest
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
+  
+  try {
+    // Fetch the full message if it's partial
+    if (reaction.partial) {
+      await reaction.fetch();
+    }
+    
+    await memeContest.handleReactionUpdate(reaction.message, reaction);
+  } catch (error) {
+    console.error('Error handling reaction:', error);
+  }
+});
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (user.bot) return;
+  
+  try {
+    // Fetch the full message if it's partial
+    if (reaction.partial) {
+      await reaction.fetch();
+    }
+    
+    await memeContest.handleReactionUpdate(reaction.message, reaction);
+  } catch (error) {
+    console.error('Error handling reaction removal:', error);
   }
 });
